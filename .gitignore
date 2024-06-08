@@ -1,0 +1,14 @@
+venv/
+build/
+__pycache__
+test.python
+.vscode/
+output/
+*.csv
+*.spec
+*.txt
+*.imtag
+ui/custom_input_iu.py
+compile.py
+__old_code.py
+test.py
