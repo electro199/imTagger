@@ -8,7 +8,6 @@ output/
 *.spec
 *.txt
 *.imtag
-ui/custom_input_iu.py
 compile.py
 __old_code.py
 test.py
