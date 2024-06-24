@@ -11,3 +11,5 @@ output/
 compile.py
 __old_code.py
 test.py
+output*
+test.ipynb

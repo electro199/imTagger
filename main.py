@@ -3,10 +3,7 @@ from pathlib import Path
 import sys
 from typing import Dict, List
 
-from PySide6.QtCore import (
-    Qt,
-    QTimer
-)
+from PySide6.QtCore import Qt#, QTimer
 from PySide6.QtGui import QKeySequence, QPixmap, QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -19,7 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from PySide6.QtGui import QImageReader, QPixmap
-from PySide6.QtCore import QDir, Qt
+from PySide6.QtCore import Qt
 from ui.app_ui import Ui_MainWindow
 from ui.custom_input_iu import InputDialog
 from glob import glob
@@ -31,17 +28,22 @@ class App(QMainWindow):
         super().__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.setWindowIcon(QIcon(r"icons\empty-icon copy.jpg"))
-        self.current_image = ""
-        self.all_images_path = []
+        self.setWindowIcon(QIcon("icons/empty-icon copy.jpg"))
+        self.current_image: str = ""
+        self.all_images_path: list[str] = []
         self.current_image_index = -1
         self.label2img: Dict[str, List[str]] = {}
         self.labels_count = -1
         self._defaults = {}
-
+        self.is_dataset_changed = False
+        self.progress_file_path = ""
         self.save_defaults()
 
         self.ui.label_holder.setWidgetResizable(True)
+
+        # self.autosave_timer = QTimer(self)
+        # self.autosave_timer.timeout.connect(self.autosave)
+        # self.autosave_timer.start(5000)
 
         self.ui.actionopen_folder.triggered.connect(self.open_folder)
         self.ui.actionOpen_Labels_file.triggered.connect(self.get_labels)
@@ -49,8 +51,9 @@ class App(QMainWindow):
         self.ui.actionSave_project.triggered.connect(self.savedataset)
         self.ui.actionOpen_img_csv.triggered.connect(self.open_img_csv)
         self.ui.actionsave_dataset.triggered.connect(self.save_progress_file)
-        self.ui.actionload_from_progress_file.triggered.connect(self.load_from_progress_file)
-
+        self.ui.actionload_from_progress_file.triggered.connect(
+            self.load_from_progress_file
+        )
 
     def _add_label_manual(self) -> None:
         self._add_label(self.labels_count + 1, self.open_input_dialog())
@@ -73,6 +76,10 @@ class App(QMainWindow):
 
     def open_img_csv(self):
         file_path, _ = QFileDialog.getOpenFileUrl(self, "Select image csv", ".")
+
+        if not file_path:
+            return
+
         with open(str(file_path.toLocalFile()), encoding="utf-8") as f:
 
             self.all_images_path = [i["path"] for i in csv.DictReader(f)]
@@ -97,13 +104,18 @@ class App(QMainWindow):
             self.current_image = self.all_images_path[self.current_image_index + 1]
             self.ui.current_image_path_label.setText(self.current_image)
             image_reader = QImageReader(self.current_image)
-        
+
         print(self.current_image)
 
         pixmap = QPixmap.fromImageReader(image_reader)
-        if not pixmap.isNull():
-            self.display_image(pixmap)
         self.current_image_index += 1
+
+        if pixmap.isNull():
+            print("found broken image", self.current_image)
+            pixmap = QPixmap.fromImageReader(QImageReader("icons/broken-image.png"))
+            return self.display_image(pixmap)
+
+        self.display_image(pixmap)
 
     def display_image(self, pixmap: QPixmap) -> None:
         self.ui.image_area.setPixmap(
@@ -151,6 +163,7 @@ class App(QMainWindow):
         print(f"Button with label '{label}' clicked!")
         # TODO do somthing...
         self.label2img[label].append(self.current_image)
+        self.is_dataset_changed = True
 
         self.show_next_image()
 
@@ -163,6 +176,25 @@ class App(QMainWindow):
         super().resizeEvent(event)
 
     def savedataset(self):
+        "Open dialog to get file info and extension is the imtag"
+
+        self.save_defaults()
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, caption="Save  Dataset", filter="*.csv"
+        )
+
+        if not file_path:  # Check if a file path was selected
+            print("empty file path detected for savedataset NOT SAVING ")
+            return
+        # Ensure the file has the correct extension
+        if not file_path.endswith(".csv"):
+            file_path += ".csv"
+
+        print(file_path)
+
+        self.progress_file_path = file_path
+
         with open("dataset.csv", "w", encoding="utf-8") as f:
             w = csv.DictWriter(f, {"label", "path"}, lineterminator="\n")
             w.writeheader()
@@ -173,37 +205,45 @@ class App(QMainWindow):
             w.writerows(b)
 
     def save_defaults(self):
-        self._defaults["current_image "] = self.current_image
-        self._defaults["all_images_path "] = self.all_images_path
-        self._defaults["current_image_index "] = self.current_image_index
-        self._defaults["label2img "] = self.label2img
-        self._defaults["labels_count "] = self.labels_count
+        self._defaults["current_image"] = self.current_image
+        self._defaults["all_images_path"] = self.all_images_path
+        self._defaults["current_image_index"] = self.current_image_index
+        self._defaults["label2img"] = self.label2img
+        self._defaults["labels_count"] = self.labels_count
 
     def to_defaults(self):
-        self.current_image = self._defaults["current_image "]
-        self.all_images_path = self._defaults["all_images_path "]
-        self.current_image_index = self._defaults["current_image_index "]
-        self.label2img = self._defaults["label2img "]
-        self.labels_count = self._defaults["labels_count "]
+        self.current_image = self._defaults["current_image"]
+        self.all_images_path = self._defaults["all_images_path"]
+        self.current_image_index = self._defaults["current_image_index"]
+        self.label2img = self._defaults["label2img"]
+        self.labels_count = self._defaults["labels_count"]
 
-    def save_progress_file(self):        
+    def save_progress_file(self) -> None:
+        self.progress_file_path, _ = QFileDialog.getSaveFileName(
+            self, caption="Save Progress File", dir="/", filter="CSV files (*.imatag)"
+        )
+
+        if not self.progress_file_path:
+            print("empty file path detected for save progress NOT SAVING ")
+            return
+
         app_state = {
-        "current_image" : self.current_image,
-        "all_images_path" : self.all_images_path,
-        "current_image_index" : self.current_image_index,
-        "label2img" : self.label2img,
-        "labels_count" : self.labels_count,
-    }
-        with open("op.imtag", "w", -1, "utf-8") as f:
+            "current_image": self.current_image,
+            "all_images_path": self.all_images_path,
+            "current_image_index": self.current_image_index,
+            "label2img": self.label2img,
+            "labels_count": self.labels_count,
+        }
+        with open(self.progress_file_path, "w", -1, "utf-8") as f:
             json.dump(app_state, f, indent=2)
 
     def load_from_progress_file(self):
-        dir ,_= QFileDialog.getOpenFileUrl(self)
-        
-        if not dir.toLocalFile():
-            return 
-        
-        with open(dir.toLocalFile(), "r", -1, "utf-8") as f:
+        dir, _ = QFileDialog.getOpenFileUrl(self, filter="IMTAG files (*.imtag)")
+        self.progress_file_path = dir.toLocalFile()
+        if not self.progress_file_path:
+            return
+
+        with open(self.progress_file_path, "r", -1, "utf-8") as f:
             app_state = json.load(f)
 
         self.current_image = app_state["current_image"]
@@ -213,13 +253,16 @@ class App(QMainWindow):
         self.add_labels(app_state["label2img"].keys())
         self.label2img = app_state["label2img"]
         self.labels_count = app_state["labels_count"]
-        
+
         self.display_image(QPixmap.fromImageReader(QImageReader(self.current_image)))
 
-    def auto_save(self):
-        self.autosave_timer = QTimer(self)
-        self.autosave_timer.timeout.connect(self.autosave)
-        self.autosave_timer.start(5000)
+    # def autosave(self):
+    #     if not self.is_dataset_changed:
+    #         return
+
+    # def on_closing(self):
+    #     pass
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
