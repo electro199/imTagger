@@ -3,7 +3,7 @@ from pathlib import Path
 import sys
 from typing import Dict, List
 
-from PySide6.QtCore import Qt#, QTimer
+from PySide6.QtCore import Qt   , QTimer
 from PySide6.QtGui import QKeySequence, QPixmap, QIcon
 from PySide6.QtWidgets import (
     QApplication,
@@ -41,9 +41,9 @@ class App(QMainWindow):
 
         self.ui.label_holder.setWidgetResizable(True)
 
-        # self.autosave_timer = QTimer(self)
-        # self.autosave_timer.timeout.connect(self.autosave)
-        # self.autosave_timer.start(5000)
+        self.autosave_timer = QTimer(self)
+        self.autosave_timer.timeout.connect(self.autosave)
+        self.autosave_timer.start(2000)
 
         self.ui.actionopen_folder.triggered.connect(self.open_folder)
         self.ui.actionOpen_Labels_file.triggered.connect(self.get_labels)
@@ -219,13 +219,15 @@ class App(QMainWindow):
         self.labels_count = self._defaults["labels_count"]
 
     def save_progress_file(self) -> None:
-        self.progress_file_path, _ = QFileDialog.getSaveFileName(
-            self, caption="Save Progress File", dir="/", filter="CSV files (*.imatag)"
-        )
 
         if not self.progress_file_path:
-            print("empty file path detected for save progress NOT SAVING ")
-            return
+            self.progress_file_path, _ = QFileDialog.getSaveFileName(
+                self, caption="Save Progress File", dir="/progress.json", filter="imtag files (*.imtag)"
+            )
+
+            if not self.progress_file_path:
+                print("empty file path detected for save progress NOT SAVING ")
+                return
 
         app_state = {
             "current_image": self.current_image,
@@ -256,12 +258,16 @@ class App(QMainWindow):
 
         self.display_image(QPixmap.fromImageReader(QImageReader(self.current_image)))
 
-    # def autosave(self):
-    #     if not self.is_dataset_changed:
-    #         return
+    def autosave(self):
+        if not (self.is_dataset_changed and self.progress_file_path):
+            print("skipping autosave",self.is_dataset_changed ,self.progress_file_path)
+            return
+        
+        print("autosave",self.is_dataset_changed ,self.progress_file_path)
+        self.save_progress_file()
 
-    # def on_closing(self):
-    #     pass
+    def on_closing(self):
+        pass
 
 
 if __name__ == "__main__":
