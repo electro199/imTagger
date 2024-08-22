@@ -17,8 +17,9 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QLabel, QMainWindow,
-    QMenu, QMenuBar, QPushButton, QScrollArea,
-    QSizePolicy, QSpacerItem, QVBoxLayout, QWidget)
+    QMenu, QMenuBar, QProgressBar, QPushButton,
+    QScrollArea, QSizePolicy, QSpacerItem, QVBoxLayout,
+    QWidget)
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -54,7 +55,7 @@ class Ui_MainWindow(object):
         self.label_holder.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignTop)
         self.scrollAreaWidgetContents = QWidget()
         self.scrollAreaWidgetContents.setObjectName(u"scrollAreaWidgetContents")
-        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 198, 523))
+        self.scrollAreaWidgetContents.setGeometry(QRect(0, 0, 198, 536))
         self.verticalLayout_2 = QVBoxLayout(self.scrollAreaWidgetContents)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
@@ -70,20 +71,53 @@ class Ui_MainWindow(object):
 
         self.verticalLayout.addWidget(self.add_Label)
 
-        self.current_image_path_label = QLabel(self.widget)
-        self.current_image_path_label.setObjectName(u"current_image_path_label")
-        self.current_image_path_label.setAlignment(Qt.AlignCenter)
-
-        self.verticalLayout.addWidget(self.current_image_path_label)
-
 
         self.horizontalLayout.addWidget(self.widget)
+
+        self.verticalLayout_3 = QVBoxLayout()
+        self.verticalLayout_3.setSpacing(1)
+        self.verticalLayout_3.setObjectName(u"verticalLayout_3")
+        self.progressBar = QProgressBar(self.centralwidget)
+        self.progressBar.setObjectName(u"progressBar")
+        sizePolicy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.progressBar.sizePolicy().hasHeightForWidth())
+        self.progressBar.setSizePolicy(sizePolicy)
+        self.progressBar.setMinimumSize(QSize(0, 2))
+        self.progressBar.setMaximumSize(QSize(16777215, 4))
+        self.progressBar.setStyleSheet(u"QProgressBar::chunk{\n"
+"background-color:rgb(0,255,0)\n"
+"}")
+        self.progressBar.setValue(0)
+        self.progressBar.setTextVisible(False)
+
+        self.verticalLayout_3.addWidget(self.progressBar)
+
+        self.current_image_path_label = QLabel(self.centralwidget)
+        self.current_image_path_label.setObjectName(u"current_image_path_label")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Maximum)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.current_image_path_label.sizePolicy().hasHeightForWidth())
+        self.current_image_path_label.setSizePolicy(sizePolicy1)
+        self.current_image_path_label.setMinimumSize(QSize(0, 20))
+        font = QFont()
+        font.setPointSize(10)
+        font.setBold(True)
+        self.current_image_path_label.setFont(font)
+        self.current_image_path_label.setAlignment(Qt.AlignCenter)
+
+        self.verticalLayout_3.addWidget(self.current_image_path_label)
 
         self.image_area = QLabel(self.centralwidget)
         self.image_area.setObjectName(u"image_area")
         self.image_area.setAlignment(Qt.AlignCenter)
 
-        self.horizontalLayout.addWidget(self.image_area)
+        self.verticalLayout_3.addWidget(self.image_area)
+
+
+        self.horizontalLayout.addLayout(self.verticalLayout_3)
 
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
@@ -116,7 +150,7 @@ class Ui_MainWindow(object):
         self.actionsave_dataset.setText(QCoreApplication.translate("MainWindow", u"save_progress", None))
         self.actionload_from_progress_file.setText(QCoreApplication.translate("MainWindow", u"load from progress file", None))
         self.add_Label.setText(QCoreApplication.translate("MainWindow", u"Add Label", None))
-        self.current_image_path_label.setText(QCoreApplication.translate("MainWindow", u"current image", None))
+        self.current_image_path_label.setText("")
         self.image_area.setText("")
         self.menuFile.setTitle(QCoreApplication.translate("MainWindow", u"File", None))
     # retranslateUi
