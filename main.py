@@ -17,14 +17,16 @@ from PySide6.QtWidgets import (
 
 from PySide6.QtGui import QImageReader, QPixmap, QShortcut, QClipboard
 from PySide6.QtCore import Qt
-from auto_labeler import Auto_Labbeler
 from ui.app_ui import Ui_MainWindow
 from ui.custom_input_iu import InputDialog
 from glob import glob
 import csv
 import logging
 
+Auto_Labbeler_ENABLED = False
 
+if Auto_Labbeler_ENABLED:
+    from auto_labeler import Auto_Labbeler
 class App(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -55,29 +57,35 @@ class App(QMainWindow):
         self.ui.image_area.customContextMenuRequested.connect(self.show_context_menu)
 
         self.ui.actionopen_folder.triggered.connect(self.open_folder)
-        self.ui.actionOpen_Labels_file.triggered.connect(self.get_labels)
-        self.ui.add_Label.pressed.connect(self._add_label_manual)
-        self.ui.actionSave_project.triggered.connect(self.savedataset)
         self.ui.actionOpen_img_csv.triggered.connect(self.open_img_csv)
-        self.ui.actionsave_dataset.triggered.connect(self.save_progress_file)
+        self.ui.actionOpen_Labels_file.triggered.connect(self.get_labels)
+        
+        self.ui.actionSave_project.triggered.connect(self.savedataset)
+        self.ui.actionsave_progress.triggered.connect(self.save_progress_file)
         self.ui.actionload_from_progress_file.triggered.connect(
             self.load_from_progress_file
         )
+        self.ui.add_Label.pressed.connect(self._add_label_manual)
 
         shortcut_a = QShortcut(QKeySequence(Qt.Key_A), self)  # type: ignore
         shortcut_a.activated.connect(self.on_a_key_pressed)
 
         shortcut_d = QShortcut(QKeySequence(Qt.Key_D), self)  # type: ignore
         shortcut_d.activated.connect(self.on_d_key_pressed)
-
-        self.model = Auto_Labbeler()
-        self.model.result_signal.connect(self.set_label)
+        if Auto_Labbeler_ENABLED:
+            self.model = Auto_Labbeler()
+            self.model.result_signal.connect(self.set_label)
 
 
     @Slot(str)
     def set_label(self,text):
         if not text:
             self.ui.current_image_path_label.setText("No Label")
+            if Auto_Labbeler_ENABLED:
+                self.model.set_image_path(self.current_image)
+                self.model.start()
+            return
+
         self.ui.current_image_path_label.setText(text)
 
     @property
@@ -88,7 +96,6 @@ class App(QMainWindow):
     def current_image_index(self, num) -> None:
         self.__current_image_index = num
         self.ui.progressBar.setValue(num + 1)
-        # self.ui.progressBar.
         self.ui.progressBar.setMaximum(len(self.all_images_path))
 
     def show_context_menu(self, position) -> None:
@@ -154,21 +161,18 @@ class App(QMainWindow):
                 str(Path(__file__).parent.joinpath("icons", "empty-icon.jpg"))
             )
             return
-        else:
-            self.current_image = self.all_images_path[self.current_image_index + 1]
-            image_reader = QImageReader(self.current_image)
-            # try:
-            if self.all_labels[self.current_image_index + 1]:
-                self.set_label(self.all_labels[self.current_image_index + 1])
-            else:
+        
+        self.current_image_index += 1
 
-                self.model.set_image_path(self.current_image)
-                self.model.start()
-
+        self.current_image = self.all_images_path[self.current_image_index]
+        image_reader = QImageReader(self.current_image)
+        # try:
+        
+        self.set_label(self.all_labels[self.current_image_index])
+        
         logging.debug(self.current_image)
 
         pixmap = QPixmap.fromImageReader(image_reader)
-        self.current_image_index += 1
 
         if pixmap.isNull():
             logging.info("found broken image", self.current_image)
@@ -182,22 +186,14 @@ class App(QMainWindow):
         if self.current_image_index - 1 < 0:
             return
         
+        self.current_image_index -= 1
         
-        self.current_image = self.all_images_path[self.current_image_index - 1]
+        self.current_image = self.all_images_path[self.current_image_index]
         image_reader = QImageReader(self.current_image)
 
-        self.set_label(self.all_labels[self.current_image_index - 1])            
-        # try:
-        #     logging.info(
-        #         self.ui.current_image_path_label.setText(
-        #             self.all_labels[self.current_image_index - 1]
-        #         ),
-        #         self.current_image,
-        #     )
-        # except IndexError:
-        #     self.ui.current_image_path_label.setText("No Label")
+        self.set_label(self.all_labels[self.current_image_index])            
+
         pixmap = QPixmap.fromImageReader(image_reader)
-        self.current_image_index -= 1
 
         if pixmap.isNull():
             logging.info("found broken image", self.current_image)
