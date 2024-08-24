@@ -2,6 +2,10 @@ import json
 from pathlib import Path
 import sys
 from typing import Any
+from glob import glob
+import csv
+import logging
+
 from PySide6.QtCore import Qt, QTimer, Slot
 from PySide6.QtGui import QKeySequence, QPixmap, QIcon, QAction
 from PySide6.QtWidgets import (
@@ -17,16 +21,16 @@ from PySide6.QtWidgets import (
 
 from PySide6.QtGui import QImageReader, QPixmap, QShortcut, QClipboard
 from PySide6.QtCore import Qt
+
 from ui.app_ui import Ui_MainWindow
 from ui.custom_input_iu import InputDialog
-from glob import glob
-import csv
-import logging
 
-Auto_Labbeler_ENABLED = False
+AUTO_LABELER_ENABLED = False
 
-if Auto_Labbeler_ENABLED:
+if AUTO_LABELER_ENABLED:
     from auto_labeler import Auto_Labbeler
+
+
 class App(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -59,7 +63,7 @@ class App(QMainWindow):
         self.ui.actionopen_folder.triggered.connect(self.open_folder)
         self.ui.actionOpen_img_csv.triggered.connect(self.open_img_csv)
         self.ui.actionOpen_Labels_file.triggered.connect(self.get_labels)
-        
+
         self.ui.actionSave_project.triggered.connect(self.savedataset)
         self.ui.actionsave_progress.triggered.connect(self.save_progress_file)
         self.ui.actionload_from_progress_file.triggered.connect(
@@ -72,16 +76,15 @@ class App(QMainWindow):
 
         shortcut_d = QShortcut(QKeySequence(Qt.Key_D), self)  # type: ignore
         shortcut_d.activated.connect(self.on_d_key_pressed)
-        if Auto_Labbeler_ENABLED:
+        if AUTO_LABELER_ENABLED:
             self.model = Auto_Labbeler()
             self.model.result_signal.connect(self.set_label)
 
-
     @Slot(str)
-    def set_label(self,text):
+    def set_label(self, text):
         if not text:
             self.ui.current_image_path_label.setText("No Label")
-            if Auto_Labbeler_ENABLED:
+            if AUTO_LABELER_ENABLED:
                 self.model.set_image_path(self.current_image)
                 self.model.start()
             return
@@ -154,22 +157,23 @@ class App(QMainWindow):
         with open(str(file_path.toLocalFile())) as f:
             self.add_labels(f.read().strip().split("\n"))
 
-    def show_next_image(self,) -> None:
+    def show_next_image(
+        self,
+    ) -> None:
 
         if (self.current_image_index + 1) > (len(self.all_images_path) - 1):
             image_reader = QImageReader(
                 str(Path(__file__).parent.joinpath("icons", "empty-icon.jpg"))
             )
             return
-        
+
         self.current_image_index += 1
 
         self.current_image = self.all_images_path[self.current_image_index]
         image_reader = QImageReader(self.current_image)
-        # try:
-        
+
         self.set_label(self.all_labels[self.current_image_index])
-        
+
         logging.debug(self.current_image)
 
         pixmap = QPixmap.fromImageReader(image_reader)
@@ -185,13 +189,13 @@ class App(QMainWindow):
 
         if self.current_image_index - 1 < 0:
             return
-        
+
         self.current_image_index -= 1
-        
+
         self.current_image = self.all_images_path[self.current_image_index]
         image_reader = QImageReader(self.current_image)
 
-        self.set_label(self.all_labels[self.current_image_index])            
+        self.set_label(self.all_labels[self.current_image_index])
 
         pixmap = QPixmap.fromImageReader(image_reader)
 
@@ -265,9 +269,7 @@ class App(QMainWindow):
         self.ui.label_holder.setDisabled(bool_arg)
 
     def resizeEvent(self, event) -> None:
-        print("1")
         if self.ui.image_area.pixmap():
-            print("2")
             self.display_image(
                 QPixmap.fromImageReader(
                     QImageReader(self.all_images_path[self.current_image_index])
@@ -387,7 +389,7 @@ class App(QMainWindow):
                 {label for label in app_state["all_labels"] if label is not None}
             )
 
-        # Assert that both lists have the same length
+        # Assert that both lists have the same length to check for broken progress files
         assert len(self.all_images_path) == len(
             self.all_labels
         ), f"Lengths of image_paths and image_labels {len(self.all_images_path)=}{len(self.all_labels)=} {self.all_images_path=}{self.all_labels=}"
@@ -423,8 +425,8 @@ class App(QMainWindow):
     def on_d_key_pressed(self):
         self.show_next_image()
 
-    def on_closing(self):
-        pass
+    # def on_closing(self):
+    #     pass
 
 
 if __name__ == "__main__":
