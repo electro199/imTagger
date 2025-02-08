@@ -36,6 +36,15 @@ Unix :
 pip3 install -r ./requirements.txt
 ```
 
+## Auto Labelling
+
+This Feature is in beta to use in app set `AUTO_LABELER_ENABLED` to True in `main.py` and install dependency:
+
+```
+pip install transformers
+```
+
+
 ## Usage :
 
 On windows click `run.bat` or in cmd `run.bat`
