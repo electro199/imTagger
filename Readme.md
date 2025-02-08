@@ -10,7 +10,7 @@ This Python-based Image Classification App allows you to label images for machin
 - **CSV Input:** Use a CSV file to specify image paths and additional metadata.
 - **Progress Tracking:** Keep track of your progress with a progress file.
 - **Autosave** saving every changes into progress file automatically.
-- **AutoLabelling** Builitin support for auto lable prediction model running with transformers.
+- **AutoLabelling** (Beta) Builitin support for auto lable prediction model running with transformers.
 
 ## Installation
 
