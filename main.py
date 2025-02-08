@@ -1,5 +1,5 @@
 import json
-from pathlib import Path
+import os
 import sys
 from typing import Any
 from glob import glob
@@ -29,6 +29,16 @@ AUTO_LABELER_ENABLED = False
 
 if AUTO_LABELER_ENABLED:
     from auto_labeler import Auto_Labbeler
+    pass
+
+if hasattr(sys, '_MEIPASS'):
+    # When running as an exe
+    base_path = sys._MEIPASS
+else:
+    # When running as a script
+    base_path = os.path.abspath(".")
+
+logging.basicConfig(level=logging.INFO)
 
 
 class App(QMainWindow):
@@ -36,7 +46,7 @@ class App(QMainWindow):
         super().__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.setWindowIcon(QIcon("icons/empty-icon copy.jpg"))
+        self.setWindowIcon(QIcon(os.path.join(base_path, "icons/empty-icon copy.jpg")))
         self.current_image: str = ""
         self.all_images_path: list[str] = []
         self.all_labels: list[str | None] = []
@@ -98,8 +108,9 @@ class App(QMainWindow):
     @current_image_index.setter
     def current_image_index(self, num) -> None:
         self.__current_image_index = num
-        self.ui.progressBar.setValue(num + 1)
-        self.ui.progressBar.setMaximum(len(self.all_images_path))
+        if len(self.all_images_path) > 0 :
+            self.ui.progressBar.setMaximum(len(self.all_images_path))
+            self.ui.progressBar.setValue(num + 1)
 
     def show_context_menu(self, position) -> None:
         context_menu = QMenu(self)
@@ -126,7 +137,7 @@ class App(QMainWindow):
         self.to_defaults()
         self.set_labels_disabled(False)
 
-        logging.info("Loading from folder : ", file_path)
+        logging.info(f"Loading from folder : {file_path}")
         self.all_images_path = (
             glob(file_path + "/**/**.png")
             + glob(file_path + "/**/**.jpg")
@@ -163,7 +174,7 @@ class App(QMainWindow):
 
         if (self.current_image_index + 1) > (len(self.all_images_path) - 1):
             image_reader = QImageReader(
-                str(Path(__file__).parent.joinpath("icons", "empty-icon.jpg"))
+                os.path.join(base_path, "icons", "empty-icon.jpg")
             )
             return
 
@@ -179,8 +190,8 @@ class App(QMainWindow):
         pixmap = QPixmap.fromImageReader(image_reader)
 
         if pixmap.isNull():
-            logging.info("found broken image", self.current_image)
-            pixmap = QPixmap.fromImageReader(QImageReader("icons/broken-image.png"))
+            logging.info("found broken image" + self.current_image)
+            pixmap = QPixmap.fromImageReader(QImageReader(os.path.join(base_path, "icons/broken-image.png")))
             return self.display_image(pixmap)
 
         self.display_image(pixmap)
@@ -200,8 +211,8 @@ class App(QMainWindow):
         pixmap = QPixmap.fromImageReader(image_reader)
 
         if pixmap.isNull():
-            logging.info("found broken image", self.current_image)
-            pixmap = QPixmap.fromImageReader(QImageReader("icons/broken-image.png"))
+            logging.info(f"found broken image {self.current_image}")
+            pixmap = QPixmap.fromImageReader(QImageReader(os.path.join(base_path, "icons/broken-image.png")))
             return self.display_image(pixmap)
 
         self.display_image(pixmap)
@@ -227,7 +238,7 @@ class App(QMainWindow):
         if label is None:
             return
         if label in self.all_unique_labels:
-            logging.info(label, "already in labels skipping...")
+            logging.info(f"{label} already in labels skipping...")
             return
 
         self.labels_count += 1
@@ -237,7 +248,7 @@ class App(QMainWindow):
         button.clicked.connect(self.on_button_clicked)
         button.setShortcut(QKeySequence(f"Ctrl+{i + 1}"))
 
-        logging.info("Adding label : ", self.labels_count)
+        logging.info(f"Adding label : {self.labels_count} {label}")
         self.ui.verticalLayout_2.insertWidget(i, button)
         self.all_unique_labels.append(label)
 
@@ -291,7 +302,7 @@ class App(QMainWindow):
         if not file_path.endswith(".csv"):
             file_path += ".csv"
 
-        logging.info("Saving to ", file_path)
+        logging.info(f"Saving to {file_path}")
 
         self.progress_file_path = file_path
 
@@ -315,7 +326,7 @@ class App(QMainWindow):
         self._defaults["current_image_index"] = self.current_image_index
         self._defaults["labels_count"] = self.labels_count
         self._defaults["all_labels"] = self.all_labels
-        self._defaults["all_unique_labels"] = self.all_unique_labels
+        self._defaults["all_unique_labels"] = self.all_unique_labels.copy()
 
     def to_defaults(self) -> None:
         """
@@ -326,7 +337,7 @@ class App(QMainWindow):
         self.current_image_index = self._defaults["current_image_index"]
         self.labels_count = self._defaults["labels_count"]
         self.all_labels = self._defaults["all_labels"]
-        self.all_unique_labels = self._defaults["all_unique_labels"]
+        self.all_unique_labels = self._defaults["all_unique_labels"].copy()
         self.clear_label_holder()
 
     def save_progress_file(self) -> None:
@@ -366,9 +377,9 @@ class App(QMainWindow):
 
         self.to_defaults()
 
+        self.all_images_path = app_state["all_images_path"] 
         self.current_image = app_state["current_image"]
         self.current_image_index = app_state["current_image_index"]
-        self.all_images_path = app_state["all_images_path"]
 
         label2img = app_state.get("label2img")
 
@@ -405,18 +416,18 @@ class App(QMainWindow):
         logging.debug("=" * 20)
         logging.debug(self.all_labels)
         self.display_image(QPixmap.fromImageReader(QImageReader(self.current_image)))
-        self.ui.current_image_path_label.setText(
+        self.set_label(
             self.all_labels[self.current_image_index]
         )
 
     def autosave(self):
         if not (self.is_dataset_changed and self.progress_file_path):
             logging.debug(
-                "skipping autosave", self.is_dataset_changed, self.progress_file_path
+                f"skipping autosave {self.is_dataset_changed} {self.progress_file_path}"
             )
             return
 
-        logging.info("autosaving", self.is_dataset_changed, self.progress_file_path)
+        logging.info(f"autosaving {self.is_dataset_changed} {self.progress_file_path}" )
         self.save_progress_file()
 
     def on_a_key_pressed(self):
