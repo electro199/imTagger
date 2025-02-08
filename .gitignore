@@ -6,8 +6,8 @@ test.python
 output/
 *.csv
 *.spec
-*.txt
 *.imtag
+label*.txt
 compile.py
 __old_code.py
 test.py
